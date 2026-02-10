@@ -1,0 +1,66 @@
+git使用的一些技巧
+git log -L <start>,<end>:<file>, -L :<funcname>:<file>  //查看从start-end的提交历史，或者查看某个函数的提交历史
+
+
+社区提交代码：
+
+1. 环境搭建wiki:
+http://wiki-server/AP-Android/wiki/How%20to%20get%20your%20first%20patch%20submitted
+
+编译：
+ make ARCH=arm64 mrproper
+ make CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 defconfig O=out
+ make CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 O=out
+
+$ cd <linux-root-dir>
+$ export CROSS_COMPILE=aarch64-linux-gnu-
+$ export ARCH=arm64
+$ make menuconfig /defconfig #生成.config,注意选择合适的编译宏,保证所改的文件被编译
+$ make
+
+
+
+2. 生成patch
+git format-patch --subject-prefix="RFC PATCH" -1
+
+git format-patch -5 --cover-letter --subject-prefix="PATCH V2"
+
+
+5. 检查patch
+
+./scripts/checkpatch.pl 0001-sched-core-Fix-size-of-rq-uclamp-initialization.patch
+total: 0 errors, 0 warnings, 9 lines checked
+
+6. 查看patch的maintainers和reviewers
+
+apuser@BJ08491PCU01:~/kernel.torvalds$ ./scripts/get_maintainer.pl 0001-sched-core-uclamp-fix-rq.uclamp-memory-size-of-initi.patch 
+
+然后在git send-email--cc和--to参数后加上上述邮件地址
+
+git send-email 0001-sched-fair-use-signed-long-when-compute-energy-delta.patch --to mingo@redhat.com --to peterz@infradead.org --to juri.lelli@redhat.com --to vincent.guittot@linaro.org --to dietmar.eggemann@arm.com --cc rostedt@goodmis.org --cc bsegall@google.com --cc mgorman@suse.de --cc bristot@redhat.com --cc linux-kernel@vger.kernel.org --cc zhang.lyra@gmail.com --cc xuewyan@foxmail.com
+
+
+google：
+
+repo init -u https://android.googlesource.com/kernel/manifest -b common-android17-6.18
+
+git clone https://android.googlesource.com/kernel/common -b xxx
+
+白名单编译：
+BUILD_CONFIG=common/build.config.gki.aarch64 build/build_abi.sh -u
+
+git push https://android.googlesource.com/kernel/common HEAD:refs/for/android13-5.15
+
+编译：
+tools/bazel build //common:kernel_aarch64
+
+更新白名单
+tools/bazel run //common:kernel_aarch64_abi_update 
+
+git push https://android.googlesource.com/kernel/common HEAD:refs/for/android-mainline 
+
+git push https://android.googlesource.com/kernel/common HEAD:refs/for/android15-6.6
+
+git push https://android.googlesource.com/kernel/common HEAD:refs/for/android16-6.12
+
+git push https://android.googlesource.com/kernel/common HEAD:refs/for/android17-6.18
