@@ -1,0 +1,64 @@
+3-1. k6.1/ k6.x
+1. 先使用objcopy处理vmlinux
+./llvm-objcopy --decompress-debug-sections vmlinux
+2. 使用原来的解析工具和解析命令解析,需要使用crash 8.0.3以上版本
+crash_arm64_sprd_v8.0.3++ -m vabits_actual=39 -m phys_offset=0x80000000 -m kimage_voffset=0xffffffc000000000 vmcore@0x80000000 vmlinux --kaslr 0x80000
+
+~/d/crash/crash-wrap/crash-k618 -m vabits_actual=39 -m phys_offset=0x80000000 -m kimage_voffset=0xFFFFFFCF8F600000 vmcore@0x80000000 vmlinux --kaslr 0xF8FE40000
+
+
+/*
+ * We put the hardirq and softirq counter into the preemption
+ * counter. The bitmask has the following meaning:
+ *
+ * - bits 0-7 are the preemption count (max preemption depth: 256)
+ * - bits 8-15 are the softirq count (max # of softirqs: 256)
+ *
+ * The hardirq count could in theory be the same as the number of
+ * interrupts in the system, but we run all interrupt handlers with
+ * interrupts disabled, so we cannot have nesting interrupts. Though
+ * there are a few palaeontologic drivers which reenable interrupts in
+ * the handler, so we need more than one bit here.
+ *
+ *         PREEMPT_MASK:	0x000000ff
+ *         SOFTIRQ_MASK:	0x0000ff00
+ *         HARDIRQ_MASK:	0x000f0000
+ *             NMI_MASK:	0x00100000
+ * PREEMPT_NEED_RESCHED:	0x80000000
+ */
+#define PREEMPT_BITS	8
+#define SOFTIRQ_BITS	8
+#define HARDIRQ_BITS	4
+#define NMI_BITS	1
+
+
+crash_arm_8.0.1> kmem -s task_struct
+CACHE     OBJSIZE  ALLOCATED     TOTAL  SLABS  SSIZE  NAME
+c1c02e40     3008      20445     20930   2093    32k  task_struct
+crash_arm_8.0.1> kmem -S task_struct|grep "\["|grep -v "FREE" | wc -l
+272
+
+
+  如果知道LIST_HEAD的地址：可以使用-H
+如：frame-group中的list-head为0xffffff808a2a1560，那么：
+list -H 0xffffff808a2a1560 -s uni_task_struct.fbg_list -o 0xf8 (fbg_list的偏移)
+crash-k618> list -H 0xffffff808a2a1560 -s uni_task_struct.fbg_list -o 0xf8
+ffffff80e9b94380  << uni_task_struct的地址
+  fbg_list = {
+    next = 0xffffff80921f4478,
+    prev = 0xffffff808a2a1560
+  },
+ffffff80921f4380
+  fbg_list = {
+    next = 0xffffff804834f278,
+    prev = 0xffffff80e9b94478
+  },
+ffffff804834f180
+  fbg_list = {
+    next = 0xffffff8021d6c478,
+    prev = 0xffffff80921f4478
+  },
+
+如果结构体中不是通过list-head的方式链接，可以使用-h
+
+list -h 0xffffff80921f4380 -s uni_task_struct -o 0xf8
